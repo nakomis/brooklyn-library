@@ -20,11 +20,15 @@ package org.apache.brooklyn.entity.zookeeper;
 
 import static java.lang.String.format;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
+import com.google.common.collect.Iterables;
 import org.apache.brooklyn.api.entity.Entity;
+import org.apache.brooklyn.api.location.PortRange;
 import org.apache.brooklyn.core.entity.Entities;
 import org.apache.brooklyn.entity.java.JavaSoftwareProcessSshDriver;
 import org.apache.brooklyn.location.ssh.SshMachineLocation;
@@ -36,6 +40,7 @@ import org.apache.brooklyn.util.ssh.BashCommands;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import org.apache.brooklyn.util.text.Strings;
 
 public class ZooKeeperSshDriver extends JavaSoftwareProcessSshDriver implements ZooKeeperDriver {
 
@@ -58,6 +63,28 @@ public class ZooKeeperSshDriver extends JavaSoftwareProcessSshDriver implements 
         return entity.config().get(ZooKeeperNode.MY_ID);
     }
 
+    @Override
+    public void preInstall() {
+        super.prepare();
+        boolean useSubnetHostname = true;
+        String bindAddress = getEntity().config().get(ZooKeeperNode.BIND_ADDRESS);
+        if (Strings.isEmpty(bindAddress)) {
+            Integer zookeeperPort = getEntity().config().get(ZooKeeperNode.ZOOKEEPER_ELECTION_PORT).iterator().next();
+            try {
+                // FIXME: Add comment to describe quirky AWS behaviour
+                useSubnetHostname = Networking.isPortAvailable(InetAddress.getByName(getEntity().sensors().get(ZooKeeperNode.ADDRESS)), zookeeperPort);
+            } catch (UnknownHostException e) {
+                useSubnetHostname = false;
+            }
+            if (useSubnetHostname) {
+                bindAddress = getEntity().sensors().get(ZooKeeperNode.SUBNET_HOSTNAME);
+            } else {
+                bindAddress = getEntity().sensors().get(ZooKeeperNode.SUBNET_ADDRESS);
+            }
+        }
+        getEntity().sensors().set(ZooKeeperNode.BIND_ADDRESS, bindAddress);
+    }
+
     // FIXME All for one, and one for all! If any node fails then we're stuck waiting for its hostname/port forever.
     // Need a way to terminate the wait based on the entity going on-fire etc.
     // FIXME Race in getMemebers. Should we change DynamicCluster.grow to create the members and only then call start on them all?
@@ -72,7 +99,7 @@ public class ZooKeeperSshDriver extends JavaSoftwareProcessSshDriver implements 
                 if (memberId == null) {
                     throw new IllegalStateException(member + " has null value for " + ZooKeeperNode.MY_ID);
                 }
-                String hostname = Entities.attributeSupplierWhenReady(member, ZooKeeperNode.SUBNET_HOSTNAME).get();
+                String hostname = Entities.attributeSupplierWhenReady(member, ZooKeeperNode.SUBNET_ADDRESS).get();
                 Integer port = Entities.attributeSupplierWhenReady(member, ZooKeeperNode.ZOOKEEPER_PORT).get();
                 Integer leaderPort = Entities.attributeSupplierWhenReady(member, ZooKeeperNode.ZOOKEEPER_LEADER_PORT).get();
                 Integer electionPort = Entities.attributeSupplierWhenReady(member, ZooKeeperNode.ZOOKEEPER_ELECTION_PORT).get();

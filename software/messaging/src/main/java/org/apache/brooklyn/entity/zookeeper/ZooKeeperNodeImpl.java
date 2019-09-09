@@ -24,6 +24,7 @@ import org.apache.brooklyn.core.entity.Attributes;
 import org.apache.brooklyn.core.location.access.BrooklynAccessUtils;
 
 import com.google.common.net.HostAndPort;
+import org.apache.brooklyn.core.sensor.DependentConfiguration;
 
 /**
  * An {@link org.apache.brooklyn.api.entity.Entity} that represents a single standalone zookeeper instance.
@@ -52,7 +53,8 @@ public class ZooKeeperNodeImpl extends AbstractZooKeeperImpl implements ZooKeepe
     @Override
     protected void postStart() {
         super.postStart();
-        HostAndPort hap = BrooklynAccessUtils.getBrooklynAccessibleAddress(this, sensors().get(ZOOKEEPER_PORT));
+        HostAndPort hap = HostAndPort.fromParts(sensors().get(BIND_ADDRESS), sensors().get(ZOOKEEPER_PORT));
+
         sensors().set(ZooKeeperNode.ZOOKEEPER_ENDPOINT, hap.toString());
         sensors().set(Attributes.MAIN_URI, URI.create("zk://" +hap.toString()));
     }

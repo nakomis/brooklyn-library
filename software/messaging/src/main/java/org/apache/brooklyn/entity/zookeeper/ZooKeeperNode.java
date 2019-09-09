@@ -57,6 +57,8 @@ public interface ZooKeeperNode extends SoftwareProcess {
     @SetFromFlag("zookeeperElectionPort")
     PortAttributeSensorAndConfigKey ZOOKEEPER_ELECTION_PORT = ConfigKeys.newPortSensorAndConfigKey("zookeeper.election.port", "Zookeeper election ports", "3888+");
 
+    AttributeSensorAndConfigKey<String, String> BIND_ADDRESS = ConfigKeys.newStringSensorAndConfigKey("zookeeper.bind.address", "The address to which the zk, leader, and election should bind. Defaults to host.subnet.address");
+
     /**
      * Location of the ZK configuration file template to be copied to the server.
      */
@@ -83,4 +85,5 @@ public interface ZooKeeperNode extends SoftwareProcess {
     /** @deprecated since 0.10.0 use <code>sensors().get(ZooKeeperNode.HOSTNAME)</code> instead */
     @Deprecated
     String getHostname();
+
 }
